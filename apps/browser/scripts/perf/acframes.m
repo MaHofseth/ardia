@@ -40,6 +40,7 @@ static void Flush(void) {
       case 'r': fprintf(gOut, "{\"k\":\"r\",\"th\":\"%c\",\"a\":%.3f,\"d\":%.3f}\n", r.th, r.a, r.b); break;
       case 'l': fprintf(gOut, "{\"k\":\"l\",\"a\":%.3f,\"d\":%.3f}\n", r.a, r.b); break;
       case 'k': fprintf(gOut, "{\"k\":\"key\",\"made\":%.3f,\"seen\":%.3f}\n", r.a, r.b); break;
+      case 'y': fprintf(gOut, "{\"k\":\"y\",\"ts\":%.3f,\"y\":%.2f}\n", r.a, r.b); break;
     }
   }
   atomic_store(&gTail, t);
@@ -182,6 +183,7 @@ static void FindJSThread(void) {
 @property(nonatomic, strong) CADisplayLink *link;
 @property(nonatomic, copy) NSString *screenName;
 @property(nonatomic) NSInteger maxFPS;
+@property(nonatomic, weak) NSScrollView *watched;
 - (BOOL)booted;
 - (void)boot;
 @end
@@ -263,6 +265,8 @@ static void FindJSThread(void) {
     gMainLoop.start = now;
   }
   Push('f', 0, ts, now, l.targetTimestamp * 1000 + off, ThreadCpuMs(gMainThread), ThreadCpuMs(gJSThread));
+  NSScrollView *watched = self.watched;
+  if (watched) Push('y', 0, ts, watched.contentView.bounds.origin.y, 0, 0, 0);
   atomic_fetch_add(&gTicks, 1);
   if (_step) {
     BOOL done = NO;
@@ -450,6 +454,7 @@ static void FindJSThread(void) {
   NSWindow *w = self.appWindow;
   if (!w) return [self answer:cid with:@{@"ok": @NO, @"error": @"no window"}];
   NSString *kind = cmd[@"kind"] ?: @"trackpad";
+  self.watched = [self tallestScrollView];
   double rate = [cmd[@"rate"] doubleValue] ?: 120;
   double sign = [cmd[@"reverse"] boolValue] ? -1 : 1;
   BOOL horizontal = [cmd[@"horizontal"] boolValue];
